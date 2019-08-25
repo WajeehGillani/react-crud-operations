@@ -2,7 +2,7 @@ import React from "react";
 import Dtable from "../components/data-table"
 import Forms from "../components/common/form/"
 import Welcome from "../components/common/welcome"
-import EditUser from "../components/edit-user"
+
 import {
   Collapse,
   Navbar,
@@ -19,11 +19,10 @@ class App extends React.Component {
   state = {
     isOpen: false
   };
-  toggle = () => {
-    this.setState({
-      isOpen: !this.state.isOpen
-    });
-  };
+   toggle = () =>
+    this.setState(state => ({
+      isOpen: !state.isOpen
+    }));
 
   render() {
     return (
@@ -52,8 +51,8 @@ class App extends React.Component {
           <div className="container mt-5">
             <Route path="/" exact component={Welcome} />
             <Route path="/listings" component={Dtable} />
-            <Route path="/add" component={Forms} />
-            <Route path="/edit/:id" component={EditUser} />
+            <Route path="/add" exact component={Forms} />
+            <Route path="/add/:id" exact component={Forms} />
           </div>
         </div>
       </Router>

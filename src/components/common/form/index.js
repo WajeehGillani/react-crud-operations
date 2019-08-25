@@ -2,7 +2,6 @@ import React from "react";
 import { Formik, Field } from "formik";
 import * as Yup from "yup";
 import axios from "axios";
-import { Route, Redirect } from "react-router-dom";
 
 import {
   Button,
@@ -21,34 +20,109 @@ class Forms extends React.Component {
     showAlert: false,
     message: "",
     success: "",
-    isEdit: false
+    isEdit: false,
+    userId: this.props.match.params.id
   };
-  onDismiss = () => {
+  componentDidMount() {
+    if (this.state.userId) {
+      this.getUserForUpdate(this.state.userId);
+    }
+  }
+
+  getUserForUpdate = async id => {
+    this.setState({ loading: true });
+    const response = await fetch(
+      `https://react-training-apis.herokuapp.com/api/users/${id}`
+    );
+    const data = await response.json();
+    this.setState({
+      user: data.user,
+      isEdit: true
+    });
+    console.log(this.state.user, "Update User");
+    console.log(this.state.isEdit, "Is Edit");
+  };
+
+  onDismiss = () =>
     this.setState({
       showAlert: false
     });
-  };
-  
-  render() {
-    
-    const Validation = Yup.object().shape({
-      name: Yup.string()
-        .required("Must not be empty")
-        .min(3, "Not less than 3 characters ")
-        .max(100, "Too Long"),
-      email: Yup.string()
-        .required("Must not be empty")
-        .email("Must be Valid Email")
-        .max(255, "Too Long"),
-      gender: Yup.string().required("You have to select Gender!"),
-      profession: Yup.string()
-        .oneOf(["Dev", "Doctor", "Business Man"])
-        .required("Please choose your Profession"),
-      address: Yup.string()
-        .required("Must not be empty")
-        .min(3, "Not less than 3 characters ")
-        .max(100, "Too Long")
+
+  validation = Yup.object().shape({
+    name: Yup.string()
+      .required("Must not be empty")
+      .min(3, "Not less than 3 characters ")
+      .max(100, "Too Long"),
+    email: Yup.string()
+      .required("Must not be empty")
+      .email("Must be Valid Email")
+      .max(255, "Too Long"),
+    gender: Yup.string().required("You have to select Gender!"),
+    profession: Yup.string()
+      .oneOf(["Dev", "Doctor", "Business Man"])
+      .required("Please choose your Profession"),
+    address: Yup.string()
+      .required("Must not be empty")
+      .min(3, "Not less than 3 characters ")
+      .max(100, "Too Long")
+  });
+
+  onSubmit = (values, actions) => {
+    this.setState({
+      user: values
     });
+    const userData = this.state.user;
+
+    actions.setSubmitting(true);
+
+    {
+      this.state.isEdit
+        ? axios
+            .post(
+              `https://react-training-apis.herokuapp.com/api/users/${
+                this.state.userId
+              }/update`,
+              this.state.user
+            )
+            .then(res => {
+              console.log(res.data);
+              this.setState({
+                showAlert: true,
+                message: res.data.message,
+                success: res.data.success
+              });
+              if (this.state.success) {
+                this.props.history.push("/listings");
+                this.setState({ isEdit: false });
+              }
+            })
+            .catch(error => {
+              console.log(error);
+            })
+        : axios
+            .post(
+              `https://react-training-apis.herokuapp.com/api/users/store`,
+              userData
+            )
+            .then(res => {
+              this.setState({
+                showAlert: true,
+                message: res.data.message,
+                success: res.data.success
+              });
+              actions.setSubmitting(false);
+            })
+            .catch(error => {
+              this.setState({
+                showAlert: true,
+                message: error
+              });
+              actions.setSubmitting(false);
+            });
+    }
+  };
+
+  render() {
     return (
       <div>
         <Alert
@@ -59,46 +133,18 @@ class Forms extends React.Component {
         >
           {this.state.message}
         </Alert>
-        <h1>Add User</h1>
+        <h1>{this.state.isEdit ? `Update User` : `Add User`}</h1>
         <Formik
+          enableReinitialize
           initialValues={{
-            name: "",
-            email: "",
-            gender: "",
-            profession: "",
-            address: ""
+            name: this.state.isEdit ? this.state.user.name : "",
+            email: this.state.isEdit ? this.state.user.email : "",
+            gender: this.state.isEdit ? this.state.user.gender : "",
+            profession: this.state.isEdit ? this.state.user.profession : "",
+            address: this.state.isEdit ? this.state.user.address : ""
           }}
-          validationSchema={Validation}
-          onSubmit={(values, actions) => {
-            this.setState({
-              user: values
-            });
-            actions.setSubmitting(true);
-
-            axios
-              .post(
-                `https://react-training-apis.herokuapp.com/api/users/store`,
-                this.state.user
-              )
-              .then(res => {
-                console.log(res.data);
-                this.setState({
-                  showAlert: true,
-                  message: res.data.message,
-                  success: res.data.success,
-                  user: []
-                });
-              })
-              .catch(error => {
-                console.log(error);
-                this.setState({
-                  showAlert: true,
-                  message: error
-                });
-              });
-
-            actions.setSubmitting(false);
-          }}
+          validationSchema={this.validation}
+          onSubmit={this.onSubmit}
           render={({
             values,
             errors,
@@ -145,10 +191,10 @@ class Forms extends React.Component {
                   <FormGroup check>
                     <Label check>
                       <Input
+                        id="gender"
                         type="radio"
                         name="gender"
                         value="Male"
-                        checked={values.gender}
                         onChange={handleChange}
                         invalid={errors.gender && touched.gender}
                       />{" "}
@@ -161,7 +207,6 @@ class Forms extends React.Component {
                         type="radio"
                         name="gender"
                         value="Female"
-                        checked={values.gender}
                         onChange={handleChange}
                         invalid={errors.gender && touched.gender}
                       />{" "}
@@ -214,13 +259,6 @@ class Forms extends React.Component {
             </Form>
           )}
         />
-        {/* <Route path="/" render={() => (
-          this.state.success ? (
-            <Redirect to="/listings" />
-          ) : (
-              <Form/>
-            )
-        )} /> */}
       </div>
     );
   }
